@@ -9,7 +9,7 @@ package WWW::Search::Rambler;
 
 use 5.008;
 use strict;
-use warnings;
+# use warnings;
 
 use WWW::Search;
 use WWW::SearchResult;
@@ -21,7 +21,7 @@ use HTML::TreeBuilder;
 use HTTP::Cookies;
 
 our @ISA = qw(WWW::Search);
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 our $MAINTAINER = 'Artur Penttinen <artur+perl@niif.spb.su>';
 
 our $iMustPause = 1;

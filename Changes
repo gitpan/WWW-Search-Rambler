@@ -5,3 +5,5 @@ Revision history for Perl extension WWW::Search::Rambler.
 	  -X -c -n WWW::Search::Rambler
         - This is the first public release.
 
+0.02  Sat Aug 14 11:42:58 2004
+	- Added prereq modules to Makefile.PM.
