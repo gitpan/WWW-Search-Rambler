@@ -1,0 +1,16 @@
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         WWW-Search-Rambler
+version:      0.03
+version_from: 
+installdirs:  site
+requires:
+    HTML::TreeBuilder:             3.13
+    HTTP::Cookies:                 1.38
+    URI:                           1.31
+    URI::Escape:                   3.26
+    WWW::Search:                   2.528
+    WWW::SearchResult:             2.061
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.30

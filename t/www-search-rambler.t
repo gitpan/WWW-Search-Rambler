@@ -8,22 +8,24 @@ BEGIN {
     use_ok ("WWW::Search::Rambler");
 };
 
-my $VERSION = '$Revision: 1.1 $'; $VERSION =~ s|[^\d.]+||g;
+our $VERSION = (qw$Revision: 1.1 $)[1];
 
 my $ss = new WWW::Search ("Rambler",'charset' => "koi8-r");
+$ss->env_proxy (1);
 # $ss->{'_debug'} = 10;
 
-ok (defined ($ss) && ref ($ss) eq "WWW::Search::Rambler","new instance");
+isa_ok ($ss,"WWW::Search");
 
 $ss->native_query ("Артур Пенттинен");
 
 my $cnt = 0;
 while (my $r = $ss->next_result ()) {
-    printf "%02d: %s: %s\n\t%s\n",++$cnt,$r->title (),$r->url (),
+    $cnt++;
+    printf "%02d: %s: %s\n\t%s\n",$cnt,$r->title (),$r->url (),
       $r->description ();
 }
 
-ok ($cnt > 10,"number of resxults");
+ok ($cnt > 9,"number of results");
 
 exit;
 

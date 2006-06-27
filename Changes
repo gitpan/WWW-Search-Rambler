@@ -7,3 +7,6 @@ Revision history for Perl extension WWW::Search::Rambler.
 
 0.02  Sat Aug 14 11:42:58 2004
 	- Added prereq modules to Makefile.PM.
+
+0.03  Tue Jun 27 14:47:00 2006
+	- Corrected charset name.

@@ -13,7 +13,7 @@ use strict;
 
 use WWW::Search;
 use WWW::SearchResult;
-use Encode;
+use Encode qw(from_to);
 use Encode::Byte;
 use URI;
 use URI::Escape;
@@ -21,7 +21,7 @@ use HTML::TreeBuilder;
 use HTTP::Cookies;
 
 our @ISA = qw(WWW::Search);
-our $VERSION = '0.02';
+our $VERSION = (qw$Revision: 1.1 $)[1];
 our $MAINTAINER = 'Artur Penttinen <artur+perl@niif.spb.su>';
 
 our $iMustPause = 1;
@@ -32,14 +32,14 @@ sub native_setup_search ($$$) {
     printf STDERR " + native_setup_search('%s','%s')\n",$query,$opt || ""
       if ($self->{'_debug'});
 
-    if ($self->{'charset'} ne "windows-1251") {
-	Encode::from_to ($query,$self->{'charset'},"windows-1251");
+    if ($self->{'charset'} !~ m|windows-1251|i) {
+	from_to ($query,$self->{'charset'},"cp1251");
     }
 
     $self->{'native_query'} = uri_escape ($query);
-    $self->{_next_to_retrieve} = 0;
+    $self->{'_next_to_retrieve'} = 0;
 
-    $self->{'agent_name'} = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)';
+    $self->{'agent_name'} = "Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)";
     $self->{'agent_e_mail'} = "nobody\@niif.spb.su";
 
     $self->{'search_base_url'} ||= "http://search.rambler.ru";
@@ -430,7 +430,7 @@ sub preprocess_results_page ($$) {
     my ($self,$text) = @_;
 
     if ($self->{'charset'} ne "windows-1251") {
-	Encode::from_to ($text,"windows-1251",$self->{'charset'});
+	from_to ($text,"cp1251",$self->{'charset'});
     }
 
     return $text;
