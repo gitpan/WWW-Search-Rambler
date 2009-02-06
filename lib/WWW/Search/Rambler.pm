@@ -7,9 +7,7 @@
 
 package WWW::Search::Rambler;
 
-use 5.008;
 use strict;
-# use warnings;
 
 use WWW::Search;
 use WWW::SearchResult;
@@ -32,8 +30,8 @@ sub native_setup_search ($$$) {
     printf STDERR " + native_setup_search('%s','%s')\n",$query,$opt || ""
       if ($self->{'_debug'});
 
-    if ($self->{'charset'} !~ m|windows-1251|i) {
-	from_to ($query,$self->{'charset'},"cp1251");
+    if ($self->{'charset'} !~ m|utf-?8|i) {
+	from_to ($query,$self->{'charset'},"utf8");
     }
 
     $self->{'native_query'} = uri_escape ($query);
@@ -335,7 +333,7 @@ sub http_request ($$$) {
 	}
 
 	my $request = new HTTP::Request ($method,$url);
-	$request->header ("Content-Type","text/html; charset=windows-1251");
+	$request->header ("Content-Type","text/html; charset=utf8");
 	$request->header ("Cookie",sprintf "ruid=%s",$self->{'_cookie_ruid'})
 	  if (exists $self->{'_cookie_ruid'});
 
@@ -429,8 +427,8 @@ sub _a_is_next_link ($$) {
 sub preprocess_results_page ($$) {
     my ($self,$text) = @_;
 
-    if ($self->{'charset'} ne "windows-1251") {
-	from_to ($text,"cp1251",$self->{'charset'});
+    if ($self->{'charset'} !~ m#utf-?8#) {
+	from_to ($text,"utf8",$self->{'charset'});
     }
 
     return $text;
@@ -439,11 +437,12 @@ sub preprocess_results_page ($$) {
 sub approximate_result_count ($) {
     my ($self) = @_;
 
-    my $str = $self->response->headers ()->header ('title')
-      or return 0;
-    $str =~ s|[^\d]+||g;
-
-    return $str;
+    if ($self->response->content =~ m#<span class="info">.+?<b>(\d+)</b></span>#) {
+	return $1;
+    }
+    else {
+	return 0;
+    }
 }
 
 1;

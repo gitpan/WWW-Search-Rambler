@@ -3,10 +3,11 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile (
 	NAME         => 'WWW::Search::Rambler',
-	VERSION      => '0.03',
+	VERSION      => '0.04',
 	PREREQ_PM    => { 'WWW::Search' => 2.528,
 			  'WWW::SearchResult' => 2.061,
 			  'URI' => 1.31,
+			  'Encode' => 0,
 			  'URI::Escape' => 3.26,
 			  'HTML::TreeBuilder' => 3.13,
 			  'HTTP::Cookies' => 1.38 },
