@@ -50,6 +50,7 @@ sub native_setup_search ($$$) {
 	# e.g. if gui_search () was already called on this object
 	$self->{'_options'} = { 'words' => $self->{'native_query'},
 				'where' => "1",
+				'noglue' => "1",
 				# 'n' => $self->{_hits_per_page},
 				# 'b' => $self->{_next_to_retrieve}-1
 			      };
@@ -58,6 +59,7 @@ sub native_setup_search ($$$) {
     my $opts = $self->{'_options'};
 
     foreach my $key (keys %$opt) {
+
 	if (WWW::Search::generic_option ($key)) {
 	    $self->{$key} = $opts->{$key} if (exists ($opts->{$key}));
 	    delete $opts->{$key};
@@ -65,6 +67,7 @@ sub native_setup_search ($$$) {
 	else {
 	    $opts->{$key} = $opt->{$key} if (exists ($opt->{$key}));
 	}
+
     }
 
     $self->{'_next_url'} = $self->{'search_base_url'} .
@@ -86,63 +89,21 @@ sub parse_tree ($$) {
 
     my $hits_found = 0;
     my $WS = q{[\t\r\n\240\ ]};
+
     # Only try to parse the hit count if we haven't done so already:
     printf STDERR " + start, approx_h_c is ==%d==\n",
       $self->approximate_hit_count() if ($self->{'_debug'} >= 2);
 
     if ($self->approximate_hit_count () < 1) {
-	# Sometimes the hit count is inside a <DIV> tag:
-	my @aoDIV = $oTree->look_down('_tag' => 'div',
-				      'class' => 'ygbody');
-
-      DIV_TAG:
-	foreach my $oDIV (@aoDIV) {
-	    next unless (ref $oDIV);
-
-	    printf STDERR " + try DIV ==%s",
-	      $oDIV->as_HTML () if ($self->{'_debug'} >= 2);
-	    my $s = $oDIV->as_text ();
-
-	    print STDERR " +   TEXT ==$s==\n" if ($self->{'_debug'} >= 2);
-
-	    my $iCount = $self->_string_has_count ($s);
-	    $iCount =~ tr|,\.||d;
-
-	    if ($iCount >= 0) {
-		$self->approximate_result_count ($iCount);
-		last DIV_TAG;
-	    } # if
-	} # foreach DIV_TAG
+      return $hits_found;
     } # if
 
-    if ($self->approximate_hit_count () < 1) {
-	# Sometimes the hit count is inside a <small> tag:
-	my @aoDIV = $oTree->look_down ('_tag' => 'small');
+    my @aoOL = $oTree->look_down ('_tag' => "ol",
+				  sub { $_[0]->attr('start') =~ m#^\d+$# });
 
-      SMALL_TAG:
-	foreach my $oDIV (@aoDIV) {
-	    next unless (ref $oDIV);
+    return 0 if ($#aoOL == -1);
 
-	    print STDERR " + try SMALL ==",$oDIV->as_HTML ()
-	      if ($self->{'_debug'} >= 2);
-
-	    my $s = $oDIV->as_text ();
-	    print STDERR " +   TEXT ==$s==\n" if ($self->{'_debug'} >= 2);
-
-	    my $iCount = $self->_string_has_count ($s);
-	    $iCount =~ tr|,\.||d;
-
-	    if ($iCount >= 0) {
-		$self->approximate_result_count ($iCount);
-		last SMALL_TAG;
-	    } # if
-	} # foreach DIV_TAG
-    } # if
-
-    printf STDERR " + found approx_h_c is ==%s==\n",
-      $self->approximate_hit_count () if ($self->{'_debug'} >= 2);
-
-    my @aoLI = $oTree->look_down ('_tag' => "li");
+    my @aoLI = $aoOL[0]->look_down ('_tag' => "li");
 
   LI_TAG:
     foreach my $oLI (@aoLI) {
@@ -155,61 +116,31 @@ sub parse_tree ($$) {
 
 	my $sTitle = $oA->as_text || '';
 	my $sURL = $oA->attr ("href") || '';
-	next LI_TAG unless ($sURL ne '');
+	my $sNOTE = $oLI->look_down ('_tag' => "div",
+				     sub { $_[0]->attr ("class") eq "note" });
+
+	  next LI_TAG unless ($sURL ne '');
 
 	print STDERR " +   raw     URL is ==$sURL==\n"
-	  if ($self->{'_debug'} >= 2);
-
-	# Throw out Yahoo category links that pop up on a failed query:
-	next LI_TAG if ($sURL =~ m|/search3/empty/catlink/|);
-	# Throw out Yahoo suggested further-search:
-	next LI_TAG if ($sURL =~ m|search.yahoo.com/search|);
-
-	unshift @aoA,$oA;
-	# Strip off the yahoo.com redirect part of the URL:
-	$sURL =~ s|\A.*?\*-||;
-	print STDERR " +   cooked  URL is ==$sURL==\n"
-	  if ($self->{'_debug'} >= 2);
-
-	# Delete the useless human-readable restatement of the URL (first
-	# <EM> tag we come across):
-	my $oEM = $oLI->look_down ('_tag' => "em");
-	if (ref($oEM)) {
-	    $oEM->detach ();
-	    $oEM->delete ();
-	} # if
-
-      A_TAG:
-	foreach my $oA (@aoA) {
-	    $oA->detach ();
-	    $oA->delete ();
-	} # foreach A_TAG
-
-	my $sDesc = $oLI->as_text ();
-	print STDERR " +   raw     sDesc is ==$sDesc==\n"
-	  if ($self->{'_debug'} >= 2);
-
-	# Grab stuff off the end of the description:
-	my $sSize = $1 if ($sDesc =~ s|\s+(-\s+)+(\d+k?)(\s+-)+\s+\Z||);
-	$sSize ||= "";
-	print STDERR " +   cooked  sDesc is ==$sDesc==\n"
 	  if ($self->{'_debug'} >= 2);
 
 	my $hit = new WWW::SearchResult;
 	$hit->add_url ($sURL);
 	$sTitle = $self->strip ($sTitle);
-	$sDesc = $self->strip ($sDesc);
+	$sNOTE = $self->strip ($sNOTE->as_HTML);
 	$hit->title ($sTitle);
-	$hit->description ($sDesc);
-	$hit->size ($sSize);
+	$hit->description ($sNOTE);
+
 	push @{$self->{'cache'}},$hit;
 	$hits_found++;
     } # foreach LI_TAG
 
     # Now try to find the "next page" link:
-    my @aoA = $oTree->look_down('_tag' => 'a');
+    my @aoA = $oTree->look_down ('_tag' => "a",
+				 sub { ( $_[0]->attr ("class") || "" ) =~ m#^n_pager_$iMustPause$# });
+
   NEXT_A:
-    foreach my $oA (reverse @aoA) {
+    foreach my $oA (@aoA) {
 	next NEXT_A unless (ref ($oA));
 	my $sAhtml = $oA->as_HTML ();
 
@@ -218,12 +149,11 @@ sub parse_tree ($$) {
 
 	if ($self->_a_is_next_link ($oA)) {
 	    my $sURL = $oA->attr ('href');
-	    # Delete Yahoo-redirect portion of URL:
-	    $sURL =~ s|\A.+?\*?-?(?=http)||;
 	    $self->{'_next_url'} = $self->absurl ($self->{'_prev_url'},$sURL);
 	    last NEXT_A;
 	} # if
     } # foreach NEXT_A
+
     return $hits_found;
 }
 
@@ -419,9 +349,7 @@ sub strip ($$) {
 sub _a_is_next_link ($$) {
     my ($self,$oA) = @_;
     return 0 unless (defined ($oA));
-    return ($oA->as_text eq "ñëåäóþùàÿ &gt;&gt;" ||
-	    $oA->as_text eq "ÓÌÅÄÕÀÝÁÑ >>" ||
-	    $oA->as_text eq "&Oacute;&Igrave;&Aring;&Auml;&Otilde;&Agrave;&Yacute;&Aacute;&Ntilde; &gt;&gt;");
+    return $oA->attr ("class") =~ m#^n_pager_\d+#;
 }
 
 sub preprocess_results_page ($$) {
@@ -437,7 +365,7 @@ sub preprocess_results_page ($$) {
 sub approximate_result_count ($) {
     my ($self) = @_;
 
-    if ($self->response->content =~ m#<span class="info">.+?<b>(\d+)</b></span>#) {
+    if ($self->response->content =~ m#<div class="report">.+?<b>(\d+)</b></div>#) {
 	return $1;
     }
     else {
