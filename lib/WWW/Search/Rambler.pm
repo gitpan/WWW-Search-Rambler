@@ -19,7 +19,7 @@ use HTML::TreeBuilder;
 use HTTP::Cookies;
 
 our @ISA = qw(WWW::Search);
-our $VERSION = (qw$Revision: 1.1 $)[1];
+our $VERSION = qw$Revision: 1.1 $[1];
 our $MAINTAINER = 'Artur Penttinen <artur+perl@niif.spb.su>';
 
 our $iMustPause = 1;
@@ -30,7 +30,7 @@ sub native_setup_search ($$$) {
     printf STDERR " + native_setup_search('%s','%s')\n",$query,$opt || ""
       if ($self->{'_debug'});
 
-    if ($self->{'charset'} !~ m|utf-?8|i) {
+    unless ($self->{'charset'} =~ m#utf-?8#i) {
 	from_to ($query,$self->{'charset'},"utf8");
     }
 
@@ -98,8 +98,8 @@ sub parse_tree ($$) {
       return $hits_found;
     } # if
 
-    my @aoOL = $oTree->look_down ('_tag' => "ol",
-				  sub { $_[0]->attr('start') =~ m#^\d+$# });
+    my @aoOL = $oTree->look_down ('_tag' => "div",
+				  sub { $_[0]->attr('class') && $_[0]->attr('class') =~ m#^search-results# }); #
 
     return 0 if ($#aoOL == -1);
 
@@ -137,7 +137,7 @@ sub parse_tree ($$) {
 
     # Now try to find the "next page" link:
     my @aoA = $oTree->look_down ('_tag' => "a",
-				 sub { ( $_[0]->attr ("class") || "" ) =~ m#^n_pager_$iMustPause$# });
+				 sub { ( $_[0]->attr ("class") || "" ) =~ m#^n_pager_$iMustPause$# });	#
 
   NEXT_A:
     foreach my $oA (@aoA) {
@@ -355,7 +355,7 @@ sub _a_is_next_link ($$) {
 sub preprocess_results_page ($$) {
     my ($self,$text) = @_;
 
-    if ($self->{'charset'} !~ m#utf-?8#) {
+    unless ($self->{'charset'} =~ m#utf-?8#) {
 	from_to ($text,"utf8",$self->{'charset'});
     }
 
@@ -365,8 +365,10 @@ sub preprocess_results_page ($$) {
 sub approximate_result_count ($) {
     my ($self) = @_;
 
-    if ($self->response->content =~ m#<div class="report">.+?<b>(\d+)</b></div>#) {
-	return $1;
+    if ($self->response->content =~ m#<div class="report">(.*?)</div>#sm) {
+	my $div = $1;
+	my @ary = $div =~ m#<b>(.+?)</b>#gsm;
+	return $ary[1] || 0;
     }
     else {
 	return 0;
