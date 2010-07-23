@@ -1,7 +1,7 @@
 # Rambler.pm
 #
 # Copyright (C) 2004 by Artur Penttinen
-# $Id: Rambler.pm,v 1.1 2004/08/07 14:23:19 artur Exp artur $
+# $Id: Rambler.pm,v 1.2 2010/08/23 12:29:15 artur Exp artur $
 #
 # Complete copyright notice follows below.
 
@@ -9,23 +9,23 @@ package WWW::Search::Rambler;
 
 use strict;
 
-use WWW::Search;
+use base "WWW::Search";
+
 use WWW::SearchResult;
-use Encode qw(from_to);
+use Encode qw( from_to );
 use Encode::Byte;
 use URI;
 use URI::Escape;
 use HTML::TreeBuilder;
 use HTTP::Cookies;
 
-our @ISA = qw(WWW::Search);
-our $VERSION = qw$Revision: 1.1 $[1];
+our $VERSION = qw$Revision: 1.2 $[1];
 our $MAINTAINER = 'Artur Penttinen <artur+perl@niif.spb.su>';
 
 our $iMustPause = 1;
 
 sub native_setup_search ($$$) {
-    my ($self,$query,$opt) = @_;
+    my ( $self,$query,$opt ) = @_;
 
     printf STDERR " + native_setup_search('%s','%s')\n",$query,$opt || ""
       if ($self->{'_debug'});
@@ -78,7 +78,7 @@ sub native_setup_search ($$$) {
 }
 
 sub parse_tree ($$) {
-    my ($self,$oTree) = @_;
+    my ( $self,$oTree ) = @_;
 
     print STDERR " + ::Rambler got a tree $oTree\n"
       if ($self->{'_debug'} >= 2);
@@ -88,7 +88,6 @@ sub parse_tree ($$) {
     $iMustPause++;
 
     my $hits_found = 0;
-    my $WS = q{[\t\r\n\240\ ]};
 
     # Only try to parse the hit count if we haven't done so already:
     printf STDERR " + start, approx_h_c is ==%d==\n",
@@ -98,28 +97,27 @@ sub parse_tree ($$) {
       return $hits_found;
     } # if
 
-    my @aoOL = $oTree->look_down ('_tag' => "div",
-				  sub { $_[0]->attr('class') && $_[0]->attr('class') =~ m#^search-results# }); #
+    my @aoDIV = $oTree->look_down ('_tag' => "div",
+				  sub { $_[0]->attr ('class') &&
+					$_[0]->attr ('class') =~ m#^search-results# }) or return 0;
 
-    return 0 if ($#aoOL == -1);
-
-    my @aoLI = $aoOL[0]->look_down ('_tag' => "li");
+    my @aoLI = $aoDIV[0]->look_down ('_tag' => "li");
 
   LI_TAG:
     foreach my $oLI (@aoLI) {
 	# Sanity check:
 	next LI_TAG unless (ref ($oLI));
 
-	my @aoA = $oLI->look_down ('_tag' => 'a');
+	my @aoA = $oLI->look_down ('_tag' => "a");
 	my $oA = shift @aoA;
-	next LI_TAG unless (ref($oA));
+	next LI_TAG unless (ref $oA);
 
-	my $sTitle = $oA->as_text || '';
-	my $sURL = $oA->attr ("href") || '';
+	my $sTitle = $oA->as_text || "";
+	my $sURL = $oA->attr ("href") || "";
 	my $sNOTE = $oLI->look_down ('_tag' => "div",
 				     sub { $_[0]->attr ("class") eq "note" });
 
-	  next LI_TAG unless ($sURL ne '');
+	next LI_TAG unless ($sURL ne "");
 
 	print STDERR " +   raw     URL is ==$sURL==\n"
 	  if ($self->{'_debug'} >= 2);
@@ -131,7 +129,7 @@ sub parse_tree ($$) {
 	$hit->title ($sTitle);
 	$hit->description ($sNOTE);
 
-	push @{$self->{'cache'}},$hit;
+	push @{ $self->{'cache'} },$hit;
 	$hits_found++;
     } # foreach LI_TAG
 
@@ -141,14 +139,14 @@ sub parse_tree ($$) {
 
   NEXT_A:
     foreach my $oA (@aoA) {
-	next NEXT_A unless (ref ($oA));
+	next NEXT_A unless (ref $oA);
 	my $sAhtml = $oA->as_HTML ();
 
 	printf STDERR " +   next A ==%s==\n", $sAhtml
 	  if ($self->{'_debug'} >= 2);
 
 	if ($self->_a_is_next_link ($oA)) {
-	    my $sURL = $oA->attr ('href');
+	    my $sURL = $oA->attr ("href");
 	    $self->{'_next_url'} = $self->absurl ($self->{'_prev_url'},$sURL);
 	    last NEXT_A;
 	} # if
@@ -158,7 +156,7 @@ sub parse_tree ($$) {
 }
 
 sub native_retrieve_some ($) {
-    my ($self) = @_;
+    my ( $self ) = @_;
 
     printf STDERR " +   %s::native_retrieve_some ()\n",__PACKAGE__
       if ($self->{'_debug'});
@@ -230,14 +228,14 @@ sub native_retrieve_some ($) {
 }
 
 sub http_request ($$$) {
-    my ($self,$method,$url) = @_;
+    my ( $self,$method,$url ) = @_;
     my $response;
 
     if ($self->{'_debug'} >= 50) {
 	eval q{ use LWP::Debug qw(+) };
     }
 
-    if (defined ($self->{'search_from_file'})) {
+    if (defined $self->{'search_from_file'}) {
 	$response = $self->_http_request_from_file ($url);
     }
     else {
@@ -251,15 +249,14 @@ sub http_request ($$$) {
 	    my $resp = $ua->request($request);
 	    $self->{'_http_referer'} = "http://www.rambler.ru";
 	    my $cookie = $resp->header ("Set-Cookie");
-	    if (defined ($cookie) && $cookie =~ m|ruid=(\S+);|) {
+	    if (defined ($cookie) && $cookie =~ m#ruid=(\S+);#) {
 		$self->{'_cookie_ruid'} = $1;
 	    }
 
-	    printf STDERR "+  got cookie: %s\n",
-	      $self->{'_cookie_ruid'} || "(none)"
+	    printf STDERR "+  got cookie: %s\n",$self->{'_cookie_ruid'} || "(none)"
 		if ($self->{'_debug'});
 
-	    sleep (2);	# we will enter request :)
+	    sleep 2;	# we will enter request :)
 	}
 
 	my $request = new HTTP::Request ($method,$url);
@@ -279,7 +276,7 @@ sub http_request ($$$) {
 	    my $s = $self->{'_http_referer'};
 	    printf STDERR " +    referer(%s), ref(s) = %s\n",$s,ref($s)
 	      if ($self->{'_debug'});
-	    $s = $s->as_string () if (ref ($s) =~ m|URI|);
+	    $s = $s->as_string () if (ref ($s) =~ m#URI#);
 	    $request->referer ($s);
 	} # if referer
 
@@ -288,7 +285,7 @@ sub http_request ($$$) {
 
       TRY_GET:
 	while (1) {
-	    $response = $ua->request($request);
+	    $response = $ua->request ($request);
 
 	    printf STDERR " +   got HTTP::Response (code=%d):\n%s",
 	      $response->code (),$response->headers ()->as_string ()
@@ -311,18 +308,20 @@ sub http_request ($$$) {
 
 	    last TRY_GET if ($response->is_success ());
 	    last TRY_GET if ($response->is_error ());
-	    last TRY_GET if ($response->headers ()->header ('Client-Warning') =~ m|redirect loop detected|i);
+	    last TRY_GET if ($response->headers ()->header ("Client-Warning") =~ m#redirect loop detected#i);
 
 	    if ($response->is_redirect () ||
-		$response->message =~ m|Object moved|i) {
+		$response->message =~ m#Object moved#i) {
+
 		my $sURL = $response->request->uri->as_string;
-		my $sURLredir = $response->headers->header ('Location');
+		my $sURLredir = $response->headers->header ("Location");
+
 		# Low-level loop detection:
 		last TRY_GET if ($sURLredir eq $sURL);
 		print STDERR " +   'Object moved' from $sURL to $sURLredir\n"
 		  if ($self->{'_debug'} >= 2);
 		# Follow the redirect:
-		$request = new HTTP::Request('GET',
+		$request = new HTTP::Request("GET",
 					     URI->new_abs($sURLredir, $sURL));
 		$request->referer ($sURL);
 		$self->{'_cookie_jar'}->add_cookie_header ($request)
@@ -334,26 +333,27 @@ sub http_request ($$$) {
 	    } # if
 	} # while infinite
     } # if not from_file
+
     return $response;
 } # http_request
 
 
 sub strip ($$) {
-    my ($self,$s) = @_;
-    $s = &WWW::Search::strip_tags ($s);
-    $s =~ s!\A[\240\t\r\n\ ]+  !!x;
-    $s =~ s!  [\240\t\r\n\ ]+\Z!!x;
+    my ( $self,$s ) = @_;
+    $s = WWW::Search::strip_tags ($s);
+    $s =~ s#\A[\240\t\r\n ]+  ##x;
+    $s =~ s#  [\240\t\r\n ]+\Z##x;
     return $s;
 }
 
-sub _a_is_next_link ($$) {
-    my ($self,$oA) = @_;
-    return 0 unless (defined ($oA));
+sub _a_is_next_link ($;$) {
+    my ( $self,$oA ) = @_;
+    return 0 unless (defined $oA);
     return $oA->attr ("class") =~ m#^n_pager_\d+#;
 }
 
 sub preprocess_results_page ($$) {
-    my ($self,$text) = @_;
+    my ( $self,$text ) = @_;
 
     unless ($self->{'charset'} =~ m#utf-?8#) {
 	from_to ($text,"utf8",$self->{'charset'});
@@ -363,7 +363,7 @@ sub preprocess_results_page ($$) {
 }
 
 sub approximate_result_count ($) {
-    my ($self) = @_;
+    my ( $self ) = @_;
 
     if ($self->response->content =~ m#<div class="report">(.*?)</div>#sm) {
 	my $div = $1;
@@ -376,6 +376,7 @@ sub approximate_result_count ($) {
 }
 
 1;
+
 __END__
 
 =head1 NAME

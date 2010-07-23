@@ -3,7 +3,7 @@ use ExtUtils::MakeMaker;
 
 WriteMakefile (
 	NAME         => 'WWW::Search::Rambler',
-	VERSION      => '0.06',
+	VERSION      => '0.07',
 	PREREQ_PM    => { 'WWW::Search' => 2.528,
 			  'WWW::SearchResult' => 2.061,
 			  'URI' => 1.31,
