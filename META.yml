@@ -1,9 +1,9 @@
 --- #YAML:1.0
 name:               WWW-Search-Rambler
-version:            0.07
+version:            0.08
 abstract:           class for searching F<http://www.rambler.ru>.
 author:
-    - Artur Penttinen <artur+perl@niif.spb.su>
+    - Artur Penttinen <ARTO@cpan.org>
 license:            unknown
 distribution_type:  module
 configure_requires:

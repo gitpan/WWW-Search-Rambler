@@ -14,8 +14,8 @@ use Getopt::Std;
 use WWW::Search;
 use Text::Wrap;
 
-my $prg = $0; $prg =~ s|^.+/||;
-my $VERSION = '$Revision:$'; $VERSION =~ s|[^\d.]+||g;
+my $prg = ( split "/", $0 )[-1];
+my $VERSION = qw$Revision: $[-1];
 
 my %opt;
 

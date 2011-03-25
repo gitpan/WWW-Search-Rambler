@@ -40,8 +40,8 @@ sub native_setup_search ($$$) {
     $self->{'agent_name'} = "Mozilla/4.0 (compatible; MSIE 5.5; Windows 98)";
     $self->{'agent_e_mail'} = "nobody\@niif.spb.su";
 
-    $self->{'search_base_url'} ||= "http://search.rambler.ru";
-    $self->{'search_base_path'} = "/srch";
+    $self->{'search_base_url'} ||= "http://nova.rambler.ru";
+    $self->{'search_base_path'} = "/search";
 
     $self->cookie_jar (new HTTP::Cookies);
 
@@ -365,10 +365,8 @@ sub preprocess_results_page ($$) {
 sub approximate_result_count ($) {
     my ( $self ) = @_;
 
-    if ($self->response->content =~ m#<div class="report">(.*?)</div>#sm) {
-	my $div = $1;
-	my @ary = $div =~ m#<b>(.+?)</b>#gsm;
-	return $ary[1] || 0;
+    if ($self->response->content =~ m#<div class="info">.+?(\d+).+?</div>#sm) {
+	return $1;
     }
     else {
 	return 0;
